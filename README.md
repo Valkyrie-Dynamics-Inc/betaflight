@@ -1,3 +1,74 @@
+# Betaflight - Tactical Radar HUD Fork
+
+## Overview
+This is a specialized fork of Betaflight that integrates an external radar directly into the analog FPV video feed. 
+
+It intercepts real-time tracking data via a custom MSP command and uses the onboard AT7456E OSD chip to project a dynamically scaling tactical bounding box with distance and speed telemetry over the target.
+
+## Architecture Modifications
+- **MSP Parser (`src/main/msp/msp.c` & `msp_protocol.h`):** Registered custom MSP command (ID `190`). The parser catches 8-byte payload packets on the configured UART and writes them to a global `radarData_t` struct.
+- **OSD Renderer (`src/main/osd/osd_elements.c`):** Registered new OSD element (`OSD_RADAR_TARGET`). Bypasses standard static buffers to draw four bounding box corners dynamically and centers telemetry text above the target.
+
+## Building from Source
+Ensure you have the standard Betaflight build toolchain installed (e.g., Ubuntu/WSL).
+
+1. Generate the target configurations:
+   ```bash
+   make configs
+   ```
+
+2. Compile the firmware for the Omnibus F4 SD target:
+    ```bash
+    make OMNIBUSF4SD
+    ```
+
+The compiled `.hex` file will be located in the `obj/` directory.
+
+## Flashing & Configuration
+
+### 1. Flash Firmware
+
+Open Betaflight Configurator, go to the Firmware Flasher, load the compiled `obj/betaflight_OMNIBUSF4SD.hex` file locally, and flash the board. Click "Apply Custom Defaults" if prompted upon first connection.
+
+### 2. Enable the UART Port
+
+The FC needs to listen for the incoming radar serial data.
+
+1. Go to the **Ports** tab.
+2. Locate the UART connected to the radar (e.g., UART3).
+3. Toggle **Configuration/MSP** to **ON**.
+4. Set the Baud Rate to **115200**.
+5. Click **Save and Reboot**.
+
+### 3. Configure OSD Video Format
+
+The AT7456E chip often fails to auto-detect the camera feed, resulting in a blank screen.
+
+1. Go to the **OSD** tab.
+2. Under Video Format, change it from `Auto` to **NTSC** (or PAL, depending on your exact camera specs).
+3. Click **Save**.
+
+### 4. Upload the Tactical Font
+
+The default Betaflight font does not contain HUD targeting corners. We hijacked four unused ASCII slots (`180`, `181`, `182`, `183`) to act as 90-degree tactical brackets (⌜ ⌝ ⌞ ⌟).
+
+1. Go to the **OSD** tab.
+2. Click **Font Manager** (bottom right).
+3. Click **Load Font** and select the custom `.mcm` file included in this repository.
+4. Click **Upload Font** and wait for the upload to complete.
+5. Ensure the `Radar Target` element is enabled in the OSD elements list.
+
+## Current State & Next Steps
+
+**Current (V1):** The pipeline successfully parses data and tracks a single dynamic target across the analog grid with proper camera FOV projection.
+
+**Next Pipeline (V2):**
+
+* **Swarm Tracking:** Convert the C-struct to an array to handle tracking up to 4 simultaneous targets.
+* **Threat Assessment UI:** Implement dynamic UI logic (e.g., blink bounding box rapidly if target speed exceeds threshold or distance drops below a set radius, pointing arrow if the target is out of the FOV).
+
+
+
 ![Betaflight](https://raw.githubusercontent.com/betaflight/.github/main/profile/images/bf_logo.svg#gh-light-mode-only)
 ![Betaflight](https://raw.githubusercontent.com/betaflight/.github/main/profile/images/bf_logo_dark.svg#gh-dark-mode-only)
 
