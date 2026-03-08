@@ -259,6 +259,30 @@ static char elementBuff[OSD_ELEMENT_BUFFER_LENGTH];
 
 enum {UP, DOWN};
 
+// --- CUSTOM RADAR DATA ---
+typedef struct {
+    uint8_t status;
+    uint8_t x_top_left;
+    uint8_t y_top_left;
+    uint8_t x_bottom_right;
+    uint8_t y_bottom_right;
+    uint16_t distance;
+    uint8_t speed;
+} radarData_t;
+
+radarData_t currentRadarData = {0};
+
+// // Hardcoded dummy data for Initial Validation
+// radarData_t currentRadarData = {
+//     .status = 1,
+//     .x_top_left = 14,
+//     .y_top_left = 7,
+//     .x_bottom_right = 14, 
+//     .y_bottom_right = 8,
+//     .distance = 45,
+//     .speed = 12
+// };
+
 static int osdDisplayWrite(osdElementParms_t *element, uint8_t x, uint8_t y, uint8_t attr, const char *s)
 {
     if (IS_BLINK(element->item)) {
@@ -1846,6 +1870,47 @@ static void osdElementSys(osdElementParms_t *element)
 // Elements that need special runtime conditional processing should be added
 // to osdAddActiveElements()
 
+// --- CUSTOM RADAR RENDERER ---
+static void osdElementRadarTarget(osdElementParms_t *element)
+{
+    // If no target, do nothing
+    if (currentRadarData.status == 0) {
+        element->drawElement = false; 
+        return;
+    }
+
+    uint8_t tl_x = currentRadarData.x_top_left;
+    uint8_t tl_y = currentRadarData.y_top_left;
+    uint8_t br_x = currentRadarData.x_bottom_right;
+    uint8_t br_y = currentRadarData.y_bottom_right;
+
+    // 1. Draw all 4 corners to create a real bounding box 
+    displayWriteChar(element->osdDisplayPort, tl_x, tl_y, DISPLAYPORT_SEVERITY_CRITICAL, 180); // Top Left ⌜ 
+    displayWriteChar(element->osdDisplayPort, br_x, tl_y, DISPLAYPORT_SEVERITY_CRITICAL, 181); // Top Right ⌝
+    displayWriteChar(element->osdDisplayPort, tl_x, br_y, DISPLAYPORT_SEVERITY_CRITICAL, 182); // Bottom Left ⌞
+    displayWriteChar(element->osdDisplayPort, br_x, br_y, DISPLAYPORT_SEVERITY_CRITICAL, 183); // Bottom Right ⌟
+
+    // 2. Format the distance and speed text
+    char radarText[16];
+    int text_len = tfp_sprintf(radarText, "%dM %dKMH", currentRadarData.distance, currentRadarData.speed);
+
+    // 3. Center the text horizontally above the bounding box
+    int text_x = tl_x + ((br_x - tl_x) / 2) - (text_len / 2);
+    
+    // Boundary checks: Prevent text from wrapping off the left or right edge of the screen
+    if (text_x < 0) text_x = 0;
+    if (text_x + text_len > 29) text_x = 29 - text_len;
+
+    // Place text 1 row above the box. If box is at the very top, push text to row 0
+    uint8_t text_y = (tl_y > 0) ? tl_y - 1 : 0;
+
+    // 4. Draw the text
+    displayWrite(element->osdDisplayPort, text_x, text_y, DISPLAYPORT_SEVERITY_NORMAL, radarText);
+
+    // Tell the OSD engine we handled the rendering manually
+    element->drawElement = false; 
+}
+
 static const uint8_t osdElementDisplayOrder[] = {
     OSD_MAIN_BATT_VOLTAGE,
     OSD_RSSI_VALUE,
@@ -1949,6 +2014,7 @@ static const uint8_t osdElementDisplayOrder[] = {
 #ifdef USE_RANGEFINDER
     OSD_LIDAR_DIST,
 #endif
+    OSD_RADAR_TARGET
 };
 
 // Define the mapping between the OSD element id and the function to draw it
@@ -2096,6 +2162,7 @@ const osdElementDrawFn osdElementDrawFunction[OSD_ITEM_COUNT] = {
 #ifdef USE_RANGEFINDER
     [OSD_LIDAR_DIST]              = osdElementLidarDist,
 #endif
+    [OSD_RADAR_TARGET]            = osdElementRadarTarget
 };
 
 // Define the mapping between the OSD element id and the function to draw its background (static part)
@@ -2170,6 +2237,8 @@ void osdAddActiveElements(void)
 #ifdef USE_PERSISTENT_STATS
     osdAddActiveElement(OSD_TOTAL_FLIGHTS);
 #endif
+// --- FORCE RADAR ACTIVE ---
+    activeOsdElementArray[activeOsdElementCount++] = OSD_RADAR_TARGET;
 }
 
 static bool osdDrawSingleElement(displayPort_t *osdDisplayPort, uint8_t item)

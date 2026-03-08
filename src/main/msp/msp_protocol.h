@@ -231,6 +231,7 @@
 #define MSP_TX_INFO                     187  // out message: Get runtime information for TX lua scripts
 #define MSP_SET_OSD_CANVAS              188  // in message:  Set OSD canvas size COLSxROWS
 #define MSP_OSD_CANVAS                  189  // out message: Get OSD canvas size COLSxROWS
+#define MSP_SET_RADAR_DATA              190  // in message:  Set radar target OSD coordinates 
 
 // Set commands (200-229)
 #define MSP_SET_RAW_RC                  200  // in message:  8 rc chan

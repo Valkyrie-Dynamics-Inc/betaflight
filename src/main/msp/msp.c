@@ -163,6 +163,17 @@
 
 static const char * const flightControllerIdentifier = FC_FIRMWARE_IDENTIFIER; // 4 UPPER CASE alpha numeric characters that identify the flight controller.
 
+// --- CUSTOM RADAR DATA EXTERN ---
+extern struct {
+    uint8_t status;
+    uint8_t x_top_left;
+    uint8_t y_top_left;
+    uint8_t x_bottom_right;
+    uint8_t y_bottom_right;
+    uint16_t distance;
+    uint8_t speed;
+} currentRadarData;
+
 enum {
     MSP_REBOOT_FIRMWARE = 0,
     MSP_REBOOT_BOOTLOADER_ROM,
@@ -2670,6 +2681,22 @@ static mspResult_e mspProcessInCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, 
     uint8_t value;
     const unsigned int dataSize = sbufBytesRemaining(src);
     switch (cmdMSP) {
+    
+    // Parse radar data
+    case MSP_SET_RADAR_DATA:
+        if (dataSize >= 8) {
+            currentRadarData.status = sbufReadU8(src);
+            currentRadarData.x_top_left = sbufReadU8(src);
+            currentRadarData.y_top_left = sbufReadU8(src);
+            currentRadarData.x_bottom_right = sbufReadU8(src);
+            currentRadarData.y_bottom_right = sbufReadU8(src);
+            currentRadarData.distance = sbufReadU16(src); // Automatically parses 2 bytes Little-Endian
+            currentRadarData.speed = sbufReadU8(src);
+        } else {    
+            return MSP_RESULT_ERROR; // Reject if PC sends a malformed/short packet
+        }
+        break;
+    
     case MSP_SELECT_SETTING:
         value = sbufReadU8(src);
         if ((value & RATEPROFILE_MASK) == 0) {
