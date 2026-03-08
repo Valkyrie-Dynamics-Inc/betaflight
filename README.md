@@ -54,7 +54,7 @@ The default Betaflight font does not contain HUD targeting corners. We hijacked 
 
 1. Go to the **OSD** tab.
 2. Click **Font Manager** (bottom right).
-3. Click **Load Font** and select the custom `.mcm` file included in this repository.
+3. Click **Load Font** and select the custom `.mcm` file included in this repository `src/fonts/custom_fonts.mcm`.
 4. Click **Upload Font** and wait for the upload to complete.
 5. Ensure the `Radar Target` element is enabled in the OSD elements list.
 
